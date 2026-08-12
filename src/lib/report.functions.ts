@@ -69,8 +69,9 @@ export const generateReport = createServerFn({ method: "POST" })
       .trim();
 
     try {
-      return JSON.parse(cleaned) as Record<string, unknown>;
+      JSON.parse(cleaned);
     } catch {
       throw new Error("Réponse IA illisible. Reformulez votre texte source.");
     }
+    return { payload: cleaned };
   });
