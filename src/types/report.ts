@@ -6,58 +6,52 @@ export type FilterPeriod =
   | "annee"
   | "global";
 
-export type ColumnType = "date" | "string" | "number" | "currency";
-
-export interface ReportColumn {
-  key: string;
-  label: string;
-  type: ColumnType;
-}
+export type CurrencyCode = "USD" | "EUR" | "HTG";
+export type SourceType = "TEXT" | "VOICE_NOTE" | "OCR_RECEIPT";
+export type AnomalyBadge = "NORMAL" | "HIGH_EXPENDITURE" | "DUPLICATE_RISK";
 
 export interface ReportItem {
   id: string;
-  date_complete: string; // ISO YYYY-MM-DD
+  report_id: string;
+  user_id?: string;
+  date_complete: string;
   jour: number;
   mois: string;
   annee: number;
   semaine_numero: number;
   trimestre: "Q1" | "Q2" | "Q3" | "Q4";
   semestre: "S1" | "S2";
-  type: "Vente" | "Achat" | "Dépense" | "Autre" | string;
+  type: string;
   categorie: string;
   description: string;
   quantite: number;
   prix_unitaire: number;
   montant_total: number;
-  statut?: string;
-  [key: string]: string | number | undefined;
+  currency_original: CurrencyCode;
+  exchange_rate: number;
+  montant_converted_usd: number;
+  anomaly_badge: AnomalyBadge;
+  anomaly_explanation?: string;
+  source_type: SourceType;
+  created_at: string;
+  synced?: boolean;
+}
+
+export interface ReportSession {
+  id: string;
+  user_id?: string;
+  title: string;
+  period_group: FilterPeriod;
+  currency_reference: CurrencyCode;
+  executive_summary?: string;
+  created_at: string;
+  synced?: boolean;
 }
 
 export interface ReportSummary {
   totalVentes: number;
-  totalAchats: number;
   totalDepenses: number;
-  soldeNette: number;
-}
-
-export interface ReportPayload {
-  report_title: string;
-  currency: string;
-  columns: ReportColumn[];
-  rows: Record<string, unknown>[];
-  summary?: {
-    total_income?: number;
-    total_expense?: number;
-    net_balance?: number;
-  };
-}
-
-export interface ParsedReport {
-  title: string;
-  currency: string;
-  columns: ReportColumn[];
-  items: ReportItem[];
-  summary: ReportSummary;
+  soldeNet: number;
 }
 
 export type MachineState = "idle" | "processing" | "parsing" | "ready" | "error";
