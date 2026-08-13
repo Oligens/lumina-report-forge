@@ -137,7 +137,10 @@ export function applyAnomalyGuard(items: ReportItem[]): ReportItem[] {
       explanation = "Risque de doublon : une écriture identique existe déjà dans la session.";
     }
 
-    return { ...item, anomaly_badge: badge, anomaly_explanation: explanation };
+    const next: ReportItem = { ...item, anomaly_badge: badge };
+    if (explanation) next.anomaly_explanation = explanation;
+    else delete next.anomaly_explanation;
+    return next;
   });
 }
 
