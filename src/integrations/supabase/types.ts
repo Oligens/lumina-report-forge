@@ -14,7 +14,125 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      report_items: {
+        Row: {
+          annee: number
+          anomaly_badge: string
+          anomaly_explanation: string | null
+          categorie: string
+          created_at: string
+          currency_original: string
+          date_complete: string
+          description: string
+          exchange_rate: number
+          id: string
+          jour: number
+          mois: string
+          montant_converted_usd: number
+          montant_total: number
+          prix_unitaire: number
+          quantite: number
+          report_id: string
+          semaine_numero: number
+          semestre: string
+          source_type: string
+          trimestre: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          annee: number
+          anomaly_badge?: string
+          anomaly_explanation?: string | null
+          categorie?: string
+          created_at?: string
+          currency_original?: string
+          date_complete: string
+          description?: string
+          exchange_rate?: number
+          id: string
+          jour: number
+          mois: string
+          montant_converted_usd?: number
+          montant_total?: number
+          prix_unitaire?: number
+          quantite?: number
+          report_id: string
+          semaine_numero: number
+          semestre: string
+          source_type?: string
+          trimestre: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          annee?: number
+          anomaly_badge?: string
+          anomaly_explanation?: string | null
+          categorie?: string
+          created_at?: string
+          currency_original?: string
+          date_complete?: string
+          description?: string
+          exchange_rate?: number
+          id?: string
+          jour?: number
+          mois?: string
+          montant_converted_usd?: number
+          montant_total?: number
+          prix_unitaire?: number
+          quantite?: number
+          report_id?: string
+          semaine_numero?: number
+          semestre?: string
+          source_type?: string
+          trimestre?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_items_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "report_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      report_sessions: {
+        Row: {
+          created_at: string
+          currency_reference: string
+          executive_summary: string | null
+          id: string
+          period_group: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency_reference?: string
+          executive_summary?: string | null
+          id: string
+          period_group?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency_reference?: string
+          executive_summary?: string | null
+          id?: string
+          period_group?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
