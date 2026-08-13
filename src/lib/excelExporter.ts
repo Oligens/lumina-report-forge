@@ -1,6 +1,6 @@
 import * as XLSX from "xlsx";
 import type { FilterPeriod, ReportItem } from "@/types/report";
-import { groupKeyFor } from "@/lib/reportParser";
+import { groupKeyFor } from "@/lib/reportEngine";
 
 const HEADERS = [
   "Année",
@@ -13,9 +13,13 @@ const HEADERS = [
   "Type",
   "Catégorie",
   "Description",
+  "Source",
+  "Audit IA",
   "Qté",
   "Prix Unitaire",
+  "Devise",
   "Montant Total",
+  "Total (USD)",
 ];
 
 function rowFor(i: ReportItem) {
@@ -30,43 +34,23 @@ function rowFor(i: ReportItem) {
     i.type,
     i.categorie,
     i.description,
+    i.source_type,
+    i.anomaly_badge,
     i.quantite,
     i.prix_unitaire,
+    i.currency_original,
     i.montant_total,
+    i.montant_converted_usd,
   ];
 }
 
 const ROYAL = "FF0F2C59";
 const GOLD = "FFD4AF37";
 
-function styleSheet(ws: XLSX.WorkSheet, rowCount: number) {
-  const border = {
-    top: { style: "thin", color: { rgb: GOLD } },
-    bottom: { style: "thin", color: { rgb: GOLD } },
-    left: { style: "thin", color: { rgb: GOLD } },
-    right: { style: "thin", color: { rgb: GOLD } },
-  };
-  for (let c = 0; c < HEADERS.length; c += 1) {
-    const ref = XLSX.utils.encode_cell({ r: 0, c });
-    const cell = ws[ref];
-    if (cell) {
-      cell.s = {
-        font: { bold: true, color: { rgb: "FFFFFFFF" } },
-        fill: { fgColor: { rgb: ROYAL } },
-        border,
-      };
-    }
-  }
-  const totalRef = XLSX.utils.encode_cell({ r: rowCount + 1, c: 0 });
-  if (ws[totalRef]) {
-    ws[totalRef].s = { font: { bold: true, color: { rgb: ROYAL } }, border };
-  }
-}
-
 export function exportToExcel(
   items: ReportItem[],
   periodGroup: FilterPeriod = "global",
-  filename = "Rapport_Financier_Lumina.xlsx",
+  filename = "ScarWrite_Rapport.xlsx",
 ) {
   if (!items.length) return;
   const wb = XLSX.utils.book_new();
@@ -77,44 +61,56 @@ export function exportToExcel(
     (grouped[key] ??= []).push(item);
   }
 
+  const border = {
+    top: { style: "thin", color: { rgb: GOLD } },
+    bottom: { style: "thin", color: { rgb: GOLD } },
+    left: { style: "thin", color: { rgb: GOLD } },
+    right: { style: "thin", color: { rgb: GOLD } },
+  };
+
   for (const [groupKey, groupItems] of Object.entries(grouped)) {
     const body = groupItems.map(rowFor);
     const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...body]);
 
-    const firstDataRow = 2;
-    const lastDataRow = body.length + 1;
-    const totalRow = lastDataRow + 1;
+    const first = 2;
+    const last = body.length + 1;
+    const totalRow = last + 1;
     XLSX.utils.sheet_add_aoa(
       ws,
       [
         [
           "TOTAL GÉNÉRAL",
+          ...Array(11).fill(""),
+          { f: `SUM(M${first}:M${last})` },
           "",
           "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          { f: `SUM(K${firstDataRow}:K${lastDataRow})` },
-          { f: `SUM(L${firstDataRow}:L${lastDataRow})` },
-          { f: `SUM(M${firstDataRow}:M${lastDataRow})` },
+          { f: `SUM(P${first}:P${last})` },
+          { f: `SUM(Q${first}:Q${last})` },
         ],
       ],
       { origin: `A${totalRow}` },
     );
 
     ws["!cols"] = HEADERS.map((h) => ({ wch: Math.max(h.length + 4, 12) }));
-    styleSheet(ws, body.length);
+    for (let c = 0; c < HEADERS.length; c += 1) {
+      const cell = ws[XLSX.utils.encode_cell({ r: 0, c })];
+      if (cell)
+        cell.s = {
+          font: { bold: true, color: { rgb: "FFFFFFFF" } },
+          fill: { fgColor: { rgb: ROYAL } },
+          border,
+        };
+    }
+    const totalCell = ws[XLSX.utils.encode_cell({ r: totalRow - 1, c: 0 })];
+    if (totalCell) totalCell.s = { font: { bold: true, color: { rgb: ROYAL } }, border };
+
     XLSX.utils.book_append_sheet(wb, ws, groupKey.substring(0, 30));
   }
 
   XLSX.writeFile(wb, filename);
 }
 
-export function exportToCSV(items: ReportItem[], filename = "rapport_lumina.csv") {
+export function exportToCSV(items: ReportItem[], filename = "scarwrite_rapport.csv") {
   if (!items.length) return;
   const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...items.map(rowFor)]);
   const csv = XLSX.utils.sheet_to_csv(ws);
