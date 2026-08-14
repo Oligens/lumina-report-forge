@@ -1,34 +1,53 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
-import { AppHeader } from "@/components/report/AppHeader";
-import { InputStudio } from "@/components/report/InputStudio";
-import { ReportGrid } from "@/components/report/ReportGrid";
-import { generateReport } from "@/lib/report.functions";
-import { computeSummary, parseAIResponse } from "@/lib/reportParser";
+import { TopBar } from "@/components/report/TopBar";
+import { SessionSidebar } from "@/components/report/SessionSidebar";
+import { MultiSourceInput } from "@/components/report/MultiSourceInput";
+import { LedgerPanel } from "@/components/report/LedgerPanel";
+import {
+  extractFromText,
+  extractFromReceipt,
+  transcribeAudio,
+  generateExecutiveSummary,
+} from "@/lib/scarwrite.functions";
+import { applyAnomalyGuard, normalizeRows } from "@/lib/reportEngine";
+import { getRatesToUSD } from "@/lib/currency";
+import {
+  addReportItems,
+  deleteReportItem,
+  deleteSession,
+  getReportItems,
+  listSessions,
+  putReportItem,
+  saveSession,
+} from "@/lib/localDatabase";
 import { exportToCSV, exportToExcel } from "@/lib/excelExporter";
-import { exportToLuxuryPDF } from "@/lib/pdfExporter";
+import { exportScarWriteLuxuryPDF } from "@/lib/pdfLuxuryExporter";
+import { supabase } from "@/integrations/supabase/client";
 import type {
+  CurrencyCode,
   FilterPeriod,
   MachineState,
-  ParsedReport,
-  ReportPayload,
+  ReportItem,
+  ReportSession,
+  SourceType,
 } from "@/types/report";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "LUMINA — AI Precision Report Suite" },
+      { title: "ScarWrite Rapport — Suite IA de Rapports Financiers" },
       {
         name: "description",
         content:
-          "Transformez vos données brutes en rapports financiers structurés, éditables et exportables en Excel, PDF et CSV grâce à l'IA.",
+          "Suite offline-first pilotée par IA : dictez, scannez ou saisissez vos données et obtenez un registre financier normalisé, exportable en Excel, PDF et CSV.",
       },
-      { property: "og:title", content: "LUMINA — AI Precision Report Suite" },
+      { property: "og:title", content: "ScarWrite Rapport — Suite IA de Rapports Financiers" },
       {
         property: "og:description",
         content:
-          "Convertisseur IA texte vers tableau financier : édition en temps réel, regroupement temporel et exports haut de gamme.",
+          "Registre intelligent multi-sources : détection d'anomalies, multi-devises, synthèse exécutive et exports haut de gamme.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -37,89 +56,339 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+const newId = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
 function Index() {
-  const runGeneration = useServerFn(generateReport);
+  const runText = useServerFn(extractFromText);
+  const runReceipt = useServerFn(extractFromReceipt);
+  const runTranscribe = useServerFn(transcribeAudio);
+  const runNarrative = useServerFn(generateExecutiveSummary);
+
+  const [sessions, setSessions] = useState<ReportSession[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [items, setItems] = useState<ReportItem[]>([]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
   const [prompt, setPrompt] = useState("");
   const [state, setState] = useState<MachineState>("idle");
   const [error, setError] = useState<string | null>(null);
-  const [report, setReport] = useState<ParsedReport | null>(null);
+  const [sourceType, setSourceType] = useState<SourceType>("TEXT");
   const [period, setPeriod] = useState<FilterPeriod>("global");
-  const [groupFilter, setGroupFilter] = useState("all");
+  const [currency, setCurrency] = useState<CurrencyCode>("USD");
+  const [rates, setRates] = useState<Record<CurrencyCode, number>>({
+    USD: 1,
+    EUR: 1.08,
+    HTG: 0.0076,
+  });
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [narrativeLoading, setNarrativeLoading] = useState(false);
 
-  const summary = useMemo(
-    () => (report ? computeSummary(report.items) : computeSummary([])),
-    [report],
+  const activeSession = useMemo(
+    () => sessions.find((session) => session.id === activeId) ?? null,
+    [sessions, activeId],
   );
 
-  const handleGenerate = async () => {
-    if (!prompt.trim()) return;
+  const refreshCounts = useCallback(async (list: ReportSession[]) => {
+    const entries = await Promise.all(
+      list.map(async (session) => [session.id, (await getReportItems(session.id)).length] as const),
+    );
+    setCounts(Object.fromEntries(entries));
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const stored = await listSessions();
+      if (stored.length === 0) {
+        const session: ReportSession = {
+          id: newId(),
+          title: `Registre ${new Date().toLocaleDateString("fr-FR")}`,
+          period_group: "global",
+          currency_reference: "USD",
+          created_at: new Date().toISOString(),
+        };
+        await saveSession(session);
+        setSessions([session]);
+        setActiveId(session.id);
+        setCounts({ [session.id]: 0 });
+      } else {
+        setSessions(stored);
+        setActiveId(stored[0]!.id);
+        await refreshCounts(stored);
+      }
+      setRates(await getRatesToUSD());
+    })();
+
+    supabase.auth.getSession().then(({ data }) => {
+      setUserEmail(data.session?.user.email ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserEmail(session?.user.email ?? null);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [refreshCounts]);
+
+  useEffect(() => {
+    if (!activeId) return;
+    void getReportItems(activeId).then(setItems);
+  }, [activeId]);
+
+  const syncToCloud = useCallback(
+    async (session: ReportSession, rows: ReportItem[]) => {
+      const { data } = await supabase.auth.getUser();
+      const uid = data.user?.id;
+      if (!uid) return;
+      setSyncing(true);
+      try {
+        await supabase.from("report_sessions").upsert({
+          id: session.id,
+          user_id: uid,
+          title: session.title,
+          period_group: session.period_group,
+          currency_reference: session.currency_reference,
+          executive_summary: session.executive_summary ?? null,
+          created_at: session.created_at,
+        });
+        if (rows.length) {
+          await supabase.from("report_items").upsert(
+            rows.map((item) => ({
+              id: item.id,
+              user_id: uid,
+              report_id: session.id,
+              date_complete: item.date_complete,
+              jour: item.jour,
+              mois: item.mois,
+              annee: item.annee,
+              semaine_numero: item.semaine_numero,
+              trimestre: item.trimestre,
+              semestre: item.semestre,
+              type: item.type,
+              categorie: item.categorie,
+              description: item.description,
+              quantite: item.quantite,
+              prix_unitaire: item.prix_unitaire,
+              montant_total: item.montant_total,
+              currency_original: item.currency_original,
+              exchange_rate: item.exchange_rate,
+              montant_converted_usd: item.montant_converted_usd,
+              anomaly_badge: item.anomaly_badge,
+              anomaly_explanation: item.anomaly_explanation ?? null,
+              source_type: item.source_type,
+              created_at: item.created_at,
+            })),
+          );
+        }
+      } finally {
+        setSyncing(false);
+      }
+    },
+    [],
+  );
+
+  const ingestPayload = useCallback(
+    async (payload: string, source: SourceType) => {
+      if (!activeSession) return;
+      setState("parsing");
+      const parsed = JSON.parse(payload) as { rows?: unknown[]; items?: unknown[] };
+      const rawRows = parsed.rows ?? parsed.items ?? [];
+      const fresh = normalizeRows(rawRows, {
+        reportId: activeSession.id,
+        sourceType: source,
+        fallbackCurrency: currency,
+        ratesToUsd: rates,
+      });
+      if (!fresh.length) throw new Error("Aucune écriture détectée dans cette source.");
+      const merged = applyAnomalyGuard([...items, ...fresh]);
+      await addReportItems(activeSession.id, merged);
+      setItems(merged);
+      setCounts((previous) => ({ ...previous, [activeSession.id]: merged.length }));
+      setState("ready");
+      void syncToCloud(activeSession, merged);
+    },
+    [activeSession, currency, items, rates, syncToCloud],
+  );
+
+  const handleSubmitText = async () => {
+    if (!prompt.trim() || !activeSession) return;
     setError(null);
     setState("processing");
+    setSourceType("TEXT");
     try {
-      const result = await runGeneration({ data: { prompt } });
-      setState("parsing");
-      const payload = JSON.parse(result.payload) as ReportPayload;
-      setReport(parseAIResponse(payload));
-      setPeriod("global");
-      setGroupFilter("all");
-      setState("ready");
+      const result = await runText({ data: { prompt, currency } });
+      await ingestPayload(result.payload, "TEXT");
+      setPrompt("");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Une erreur est survenue.");
       setState("error");
     }
   };
 
-  const handleCellEdit = (rowId: string, key: string, value: string) => {
-    setReport((previous) => {
-      if (!previous) return previous;
-      const column = previous.columns.find((c) => c.key === key);
-      const numeric = column?.type === "number" || column?.type === "currency";
-      return {
-        ...previous,
-        items: previous.items.map((item) =>
-          item.id === rowId
-            ? { ...item, [key]: numeric ? Number(value) || 0 : value }
-            : item,
-        ),
-      };
+  const handleSubmitReceipt = async (dataUrl: string) => {
+    setError(null);
+    setState("processing");
+    setSourceType("OCR_RECEIPT");
+    try {
+      const result = await runReceipt({ data: { imageDataUrl: dataUrl, currency } });
+      await ingestPayload(result.payload, "OCR_RECEIPT");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Lecture du reçu impossible.");
+      setState("error");
+    }
+  };
+
+  const handleTranscribe = async (base64: string, format: string) => {
+    setError(null);
+    setState("processing");
+    setSourceType("VOICE_NOTE");
+    try {
+      const { text } = await runTranscribe({ data: { audioBase64: base64, format } });
+      setPrompt((previous) => (previous ? `${previous}\n${text}` : text));
+      const result = await runText({ data: { prompt: text, currency } });
+      await ingestPayload(result.payload, "VOICE_NOTE");
+      setPrompt("");
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Transcription impossible.");
+      setState("error");
+    }
+  };
+
+  const handleCellEdit = (rowId: string, key: keyof ReportItem, value: string) => {
+    const numericKeys: (keyof ReportItem)[] = ["quantite", "prix_unitaire", "montant_total"];
+    setItems((previous) => {
+      const next = previous.map((item) => {
+        if (item.id !== rowId) return item;
+        const updated: ReportItem = numericKeys.includes(key)
+          ? { ...item, [key]: Number(value) || 0 }
+          : { ...item, [key]: value };
+        updated.montant_converted_usd = updated.montant_total * updated.exchange_rate;
+        void putReportItem(updated);
+        return updated;
+      });
+      return next;
     });
   };
 
-  const items = report?.items ?? [];
-  const noData = items.length === 0;
+  const handleDeleteRow = async (rowId: string) => {
+    await deleteReportItem(rowId);
+    setItems((previous) => previous.filter((item) => item.id !== rowId));
+    if (activeId) {
+      setCounts((previous) => ({
+        ...previous,
+        [activeId]: Math.max((previous[activeId] ?? 1) - 1, 0),
+      }));
+    }
+  };
+
+  const handleCreateSession = async () => {
+    const session: ReportSession = {
+      id: newId(),
+      title: `Registre ${new Date().toLocaleDateString("fr-FR")}`,
+      period_group: "global",
+      currency_reference: currency,
+      created_at: new Date().toISOString(),
+    };
+    await saveSession(session);
+    setSessions((previous) => [session, ...previous]);
+    setActiveId(session.id);
+    setItems([]);
+    setCounts((previous) => ({ ...previous, [session.id]: 0 }));
+  };
+
+  const handleDeleteSession = async (id: string) => {
+    await deleteSession(id);
+    const remaining = sessions.filter((session) => session.id !== id);
+    setSessions(remaining);
+    if (activeId === id) {
+      setActiveId(remaining[0]?.id ?? null);
+      setItems(remaining[0] ? await getReportItems(remaining[0].id) : []);
+    }
+  };
+
+  const handleNarrative = async () => {
+    if (!activeSession || !items.length) return;
+    setNarrativeLoading(true);
+    try {
+      const ledger = items
+        .map(
+          (item) =>
+            `${item.date_complete} | ${item.type} | ${item.categorie} | ${item.description} | ${item.montant_converted_usd.toFixed(2)} USD`,
+        )
+        .join("\n");
+      const { summary } = await runNarrative({ data: { ledger } });
+      const updated: ReportSession = { ...activeSession, executive_summary: summary };
+      await saveSession(updated);
+      setSessions((previous) =>
+        previous.map((session) => (session.id === updated.id ? updated : session)),
+      );
+      void syncToCloud(updated, items);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Synthèse indisponible.");
+    } finally {
+      setNarrativeLoading(false);
+    }
+  };
+
+  const handleSignIn = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: window.location.origin },
+    });
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      <AppHeader
-        disabled={noData}
+      <TopBar
+        disabled={items.length === 0}
         onExportExcel={() => exportToExcel(items, period)}
         onExportCSV={() => exportToCSV(items)}
         onExportPDF={() =>
-          exportToLuxuryPDF(
-            items,
-            summary,
-            report?.title ?? "Rapport Financier Global",
-            report?.currency ?? "USD",
-          )
+          activeSession ? exportScarWriteLuxuryPDF(activeSession, items) : undefined
         }
+        currency={currency}
+        onCurrencyChange={setCurrency}
+        userEmail={userEmail}
+        onSignIn={handleSignIn}
+        onSignOut={handleSignOut}
+        syncing={syncing}
       />
 
-      <main className="mx-auto mt-6 grid max-w-[1600px] gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <InputStudio
-          value={prompt}
-          onChange={setPrompt}
-          onGenerate={handleGenerate}
-          state={state}
-          error={error}
-        />
-        <ReportGrid
-          report={report}
-          summary={summary}
+      <main className="mx-auto mt-6 grid max-w-[1800px] gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,25fr)_minmax(0,35fr)_minmax(0,40fr)]">
+        <SessionSidebar
+          sessions={sessions}
+          activeId={activeId}
+          counts={counts}
+          onSelect={setActiveId}
+          onCreate={handleCreateSession}
+          onDelete={handleDeleteSession}
           period={period}
           onPeriodChange={setPeriod}
-          groupFilter={groupFilter}
-          onGroupFilterChange={setGroupFilter}
+        />
+        <MultiSourceInput
+          value={prompt}
+          onChange={setPrompt}
+          onSubmitText={handleSubmitText}
+          onSubmitReceipt={handleSubmitReceipt}
+          onTranscribe={handleTranscribe}
+          state={state}
+          error={error}
+          sourceType={sourceType}
+        />
+        <LedgerPanel
+          session={activeSession}
+          items={items}
+          period={period}
+          displayCurrency={currency}
+          rates={rates}
           onCellEdit={handleCellEdit}
+          onDeleteRow={handleDeleteRow}
+          onGenerateNarrative={handleNarrative}
+          narrativeLoading={narrativeLoading}
           busy={state === "processing" || state === "parsing"}
         />
       </main>
