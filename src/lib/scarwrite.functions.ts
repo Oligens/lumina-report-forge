@@ -155,3 +155,67 @@ export const generateExecutiveSummary = createServerFn({ method: "POST" })
     });
     return { summary: content };
   });
+
+const ACCOUNTANT_PROMPT = `Tu es "Assistant Expert-Comptable ScarWrite", un expert-comptable humain, courtois, professionnel et pédagogue qui accompagne son client en français.
+Règles :
+- Tu expliques les notions comptables (amortissement, amortissements dérogatoires, créances, stock final, provisions, TVA...) avec des mots simples et un exemple concret adapté au secteur du client (ex: pour un restaurant, un four acheté 5 000 $ amorti sur 5 ans perd 1 000 $ par an).
+- Si le client dit "je ne comprends pas" ou pose une question, tu expliques d'abord, puis tu proposes un guidage pas à pas avec de petites questions simples pour calculer ensemble la valeur.
+- Tu poses UNE question à la fois, jamais une longue liste.
+- Tu ne génères jamais un bilan incomplet : tu réclames poliment les informations manquantes nécessaires à la norme comptable choisie (stock final, amortissements, impôts et taxes, NIF, dettes, capital...).
+- Réponses courtes (3 à 6 phrases), chaleureuses, sans jargon inutile.`;
+
+export const accountantChat = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        messages: z
+          .array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() }))
+          .max(40),
+        context: z.string().max(30000).default(""),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const content = await callGateway({
+      model: "google/gemini-3.5-flash",
+      messages: [
+        { role: "system", content: ACCOUNTANT_PROMPT },
+        { role: "system", content: `Contexte du dossier :\n${data.context}` },
+        ...data.messages,
+      ],
+    });
+    return { reply: content };
+  });
+
+export const buildFinancialStatements = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        context: z.string().min(1).max(60000),
+        transcript: z.string().max(30000).default(""),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const content = await callGateway({
+      model: "google/gemini-3.5-flash",
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content: `Tu es un expert-comptable. À partir du profil d'entreprise, du journal comptable et des compléments fournis par le client, produis des états financiers complets conformes à la norme comptable indiquée.
+Réponds UNIQUEMENT en JSON strict avec cette forme :
+{"complete":true|false,"question":"question unique et pédagogue si complete=false",
+"bilan":{"actifs_immobilises":[{"libelle":"","montant":0}],"actifs_circulants":[],"passifs":[],"capitaux_propres":[]},
+"resultat":{"produits":[],"charges":[],"resultat_exploitation":0,"resultat_financier":0,"resultat_net":0},
+"tresorerie":{"exploitation":[],"investissement":[],"financement":[]},
+"capitaux":[{"libelle":"","montant":0}],
+"notes":["..."],
+"comparatif":[{"libelle":"","n":0,"n1":0}]}
+Si une information fondamentale manque (stock final, amortissements, impôts, NIF, dettes), mets complete=false et pose UNE question simple et pédagogue. N'invente aucun chiffre.`,
+        },
+        { role: "user", content: `${data.context}\n\nCompléments du client :\n${data.transcript}` },
+      ],
+    });
+    return { payload: cleanJson(content) };
+  });
