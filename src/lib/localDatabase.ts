@@ -66,3 +66,21 @@ export async function getReportItems(reportId: string): Promise<ReportItem[]> {
   const items = await db.getAllFromIndex("items", "by-report", reportId);
   return items.sort((a, b) => a.date_complete.localeCompare(b.date_complete));
 }
+
+const PROFILE_KEY = "scarwrite_company_profile";
+
+export function loadCompanyProfile(): import("@/types/report").CompanyProfile | null {
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(PROFILE_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as import("@/types/report").CompanyProfile;
+  } catch {
+    return null;
+  }
+}
+
+export function saveCompanyProfile(profile: import("@/types/report").CompanyProfile) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+}
