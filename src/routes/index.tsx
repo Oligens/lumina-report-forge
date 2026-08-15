@@ -118,7 +118,7 @@ function Index() {
         setActiveId(stored[0]!.id);
         await refreshCounts(stored);
       }
-      setRates(await getRatesToUSD());
+      setRates((await getRatesToUSD()).rates);
     })();
 
     supabase.auth.getSession().then(({ data }) => {
