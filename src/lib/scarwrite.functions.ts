@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import type { CurrencyCode, BusinessModel, AccountingStandard } from "@/types/report";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 

@@ -30,8 +30,8 @@ export interface SubscriptionRevenue {
   subscriptionId: string;
   customerName: string;
   totalAmount: number;
-  startDate: string;
-  endDate: string;
+  startDate?: string | undefined;
+  endDate?: string | undefined;
   monthlyRecognition: number;
   deferredRevenue: number;
   recognizedRevenue: number;
@@ -55,7 +55,7 @@ export interface BudgetCommitment {
   stage: "ENGAGEMENT" | "LIQUIDATION" | "ORDONNANCEMENT" | "PAIEMENT";
   availableCredit: number;
   isBlocked: boolean;
-  blockReason?: string;
+  blockReason?: string | undefined;
 }
 
 export interface ProfitAllocation {
@@ -414,7 +414,7 @@ export function calculateFIFOOut(
   const remainingBatches = batches.map(b => ({ ...b }));
   
   for (let i = 0; i < remainingBatches.length && remaining > 0; i++) {
-    const batch = remainingBatches[i];
+    const batch = remainingBatches[i]!;
     const taken = Math.min(remaining, batch.quantity);
     totalCost += taken * batch.unitCost;
     batch.quantity -= taken;
