@@ -56,24 +56,40 @@ function cleanJson(content: string) {
 }
 
 export const extractFromText = createServerFn({ method: "POST" })
-  .inputValidator((data: unknown) =>
+  .validator((data) =>
     z
       .object({
         prompt: z.string().min(1).max(20000),
         currency: z.string().default("USD"),
+        businessModel: z.enum([
+          "SaaS / Abonnement",
+          "Commerce de détail / Restaurant",
+          "Industrie / Manufacturing",
+          "Prestataire de Services",
+          "Société de Conseil",
+          "Organisme à but non lucratif",
+          "Comptabilité Publique",
+        ]).default("Prestataire de Services"),
+        accountingStandard: z.enum(["SYSCOHADA", "IFRS", "US GAAP", "PCG", "Norme Nationale Locale"]).default("SYSCOHADA"),
       })
       .parse(data),
   )
   .handler(async ({ data }) => {
+    // Import des fonctions du moteur comptable
+    const { buildAccountingPrompt } = await import("@/lib/accountingEngine");
+    
+    const accountingPrompt = buildAccountingPrompt(
+      data.prompt,
+      data.businessModel as BusinessModel,
+      data.accountingStandard as AccountingStandard,
+      data.currency as CurrencyCode,
+    );
+    
     const content = await callGateway({
       model: "google/gemini-3.5-flash",
       response_format: { type: "json_object" },
       messages: [
-        { role: "system", content: EXTRACTION_PROMPT },
-        {
-          role: "user",
-          content: `Devise de référence : ${data.currency}.\n\n${data.prompt}`,
-        },
+        { role: "system", content: accountingPrompt },
       ],
     });
     return { payload: cleanJson(content) };

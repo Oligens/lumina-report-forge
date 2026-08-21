@@ -69,7 +69,8 @@ export type BusinessModel =
   | "Industrie / Manufacturing"
   | "Prestataire de Services"
   | "Société de Conseil"
-  | "Organisme à but non lucratif";
+  | "Organisme à but non lucratif"
+  | "Comptabilité Publique";
 
 export type LegalForm =
   | "Société Anonyme (SA)"
@@ -100,6 +101,9 @@ export interface CompanyProfile {
   charges_n1: number;
   actifs_n1: number;
   passifs_n1: number;
+  // Modules comptables avancés
+  stock_valuation_method?: "CUMP" | "FIFO";
+  budget_available_credit?: number; // Pour entités publiques
   updated_at: string;
 }
 
