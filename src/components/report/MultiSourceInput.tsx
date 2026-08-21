@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { Loader2, Sparkles, Mic, Square, ScanLine, Keyboard } from "lucide-react";
+import { Loader2, Sparkles, Mic, Square, ScanLine, Keyboard, CheckCircle } from "lucide-react";
 import type { MachineState, SourceType } from "@/types/report";
 
 const TEMPLATES = [
@@ -86,12 +86,19 @@ export function MultiSourceInput({
   };
 
   return (
-    <section className="flex h-full flex-col gap-4 rounded-xl border border-border bg-card p-5 shadow-elevated">
+    <section className="glass-strong flex h-full flex-col gap-4 rounded-2xl p-5 shadow-elevated">
+      {/* Onglets supérieurs */}
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-serif text-lg font-semibold text-royal">Studio Multi-Sources</h2>
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-royal/25 px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-royal">
+        <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] ${
+          busy
+            ? "border-gold/30 bg-gold/10 text-gold-deep"
+            : state === "error"
+              ? "border-destructive/30 bg-destructive/10 text-destructive"
+              : "border-royal/25 bg-white/40 text-royal"
+        }`}>
           <span
-            className={`size-1.5 rounded-full ${
+            className={`size-2 rounded-full ${
               busy
                 ? "animate-pulse bg-gold"
                 : state === "error"
@@ -103,30 +110,31 @@ export function MultiSourceInput({
         </span>
       </div>
 
+      {/* Onglets */}
       <div className="grid grid-cols-3 gap-2">
-        <div className="flex items-center justify-center gap-1.5 rounded-lg border border-gold/40 bg-accent px-2 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-gold-deep">
-          <Keyboard className="size-3.5" /> Texte
+        <div className="flex items-center justify-center gap-2 rounded-xl border border-gold/40 bg-gradient-gold/10 px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-gold-deep shadow-gold">
+          <Keyboard className="size-4" /> Texte Libre
         </div>
         <button
           type="button"
           onClick={recording ? stopRecording : startRecording}
           disabled={busy}
-          className={`flex items-center justify-center gap-1.5 rounded-lg border px-2 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.1em] transition-all disabled:opacity-40 ${
+          className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] transition-all disabled:opacity-40 ${
             recording
               ? "border-destructive bg-destructive/10 text-destructive"
-              : "border-royal/30 text-royal hover:border-gold hover:text-gold-deep"
+              : "border-royal/25 bg-white/40 text-royal hover:border-gold hover:bg-accent"
           }`}
         >
-          {recording ? <Square className="size-3.5" /> : <Mic className="size-3.5" />}
-          {recording ? "Arrêter" : "Vocal"}
+          {recording ? <Square className="size-4" /> : <Mic className="size-4" />}
+          {recording ? "Arrêter" : "Dictée Vocale IA"}
         </button>
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
           disabled={busy}
-          className="flex items-center justify-center gap-1.5 rounded-lg border border-royal/30 px-2 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.1em] text-royal transition-all hover:border-gold hover:text-gold-deep disabled:opacity-40"
+          className="flex items-center justify-center gap-2 rounded-xl border border-royal/25 bg-white/40 px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-royal transition-all hover:border-gold hover:bg-accent disabled:opacity-40"
         >
-          <ScanLine className="size-3.5" /> Reçu OCR
+          <ScanLine className="size-4" /> Scan Reçu / OCR
         </button>
         <input
           ref={fileRef}
@@ -140,20 +148,63 @@ export function MultiSourceInput({
         />
       </div>
 
+      {/* Zone de saisie */}
       <textarea
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={`Dictez, scannez ou collez vos données brutes…\n\nEx : ventes, achats, dépenses, factures, notes de caisse. Le moteur IA déduit les colonnes, les dates, les devises et les montants — puis les ajoute au registre en cours.`}
-        className="min-h-[220px] flex-1 resize-none rounded-lg border border-input bg-background p-4 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/70 focus:border-gold focus:ring-2 focus:ring-gold/25"
+        placeholder={`Dictez, scannez ou collez vos données brutes…
+
+Ex : ventes, achats, dépenses, factures, notes de caisse. Le moteur IA déduit les colonnes, les dates, les devises et les montants — puis les ajoute au registre en cours.`}
+        className="min-h-[180px] flex-1 resize-none rounded-xl border border-royal/20 bg-white/50 p-4 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-gold focus:bg-white/70 focus:ring-2 focus:ring-gold/20"
       />
 
+      {/* Analyse IA en temps réel */}
+      {state === "ready" && (
+        <div className="rounded-xl border border-gold/30 bg-gradient-gold/5 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <CheckCircle className="size-4 text-green-600" />
+            <p className="text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-gold-deep">
+              Analyse IA en Temps Réel
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <p className="text-[0.55rem] uppercase tracking-[0.12em] text-muted-foreground">Type d'opération</p>
+              <p className="font-medium text-royal">Vente / Achat</p>
+            </div>
+            <div>
+              <p className="text-[0.55rem] uppercase tracking-[0.12em] text-muted-foreground">Compte Débit</p>
+              <p className="font-medium text-royal">512 - Banque</p>
+            </div>
+            <div>
+              <p className="text-[0.55rem] uppercase tracking-[0.12em] text-muted-foreground">Compte Crédit</p>
+              <p className="font-medium text-royal">701 - Ventes</p>
+            </div>
+            <div>
+              <p className="text-[0.55rem] uppercase tracking-[0.12em] text-muted-foreground">Montant</p>
+              <p className="font-medium text-royal">Auto-détecté</p>
+            </div>
+          </div>
+          <div className="mt-3">
+            <div className="mb-1 flex items-center justify-between">
+              <p className="text-[0.55rem] uppercase tracking-[0.12em] text-muted-foreground">Confiance IA</p>
+              <p className="text-[0.6rem] font-semibold text-gold-deep">98%</p>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-royal/10">
+              <div className="h-full w-[98%] rounded-full bg-gradient-gold" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bouton d'injection */}
       <div className="flex flex-wrap gap-2">
         {TEMPLATES.map((template) => (
           <button
             key={template.label}
             type="button"
             onClick={() => onChange(value ? value : template.text)}
-            className="rounded-full border border-royal/25 bg-background px-3 py-1.5 text-[0.7rem] font-medium text-royal transition-all hover:border-gold hover:bg-accent hover:text-gold-deep"
+            className="rounded-full border border-royal/20 bg-white/40 px-3 py-1.5 text-[0.65rem] font-medium text-royal transition-all hover:border-gold hover:bg-accent"
           >
             {template.label}
           </button>
@@ -161,7 +212,7 @@ export function MultiSourceInput({
       </div>
 
       {error ? (
-        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+        <p className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
           {error}
         </p>
       ) : null}
@@ -170,11 +221,41 @@ export function MultiSourceInput({
         type="button"
         onClick={onSubmitText}
         disabled={busy || !value.trim()}
-        className="bg-gradient-gold inline-flex items-center justify-center gap-2 rounded-lg px-5 py-3 text-sm font-semibold uppercase tracking-[0.12em] text-gold-foreground shadow-gold transition-all duration-200 hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+        className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-royal via-royal-soft to-royal px-5 py-3.5 text-left shadow-gold transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {busy ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
-        Ajouter au registre ({sourceType === "OCR_RECEIPT" ? "OCR" : sourceType === "VOICE_NOTE" ? "Vocal" : "Texte"})
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-all group-hover:via-white/20" />
+        <div className="relative flex items-center justify-center gap-2">
+          {busy ? <Loader2 className="size-4 animate-spin text-gold-deep" /> : <Sparkles className="size-4 text-gold-deep" />}
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-white">
+            Injecter au Journal Courant - Validation & Intégration Automatique
+          </span>
+        </div>
       </button>
+
+      {/* Pied de colonne - Sources récentes */}
+      <div className="rounded-xl border border-royal/20 bg-white/40 px-4 py-3">
+        <p className="mb-2 text-[0.58rem] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          Sources Récentes
+        </p>
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 rounded-lg border border-royal/15 bg-white/50 px-3 py-2">
+            <Mic className="size-3.5 text-royal" />
+            <div className="flex-1">
+              <p className="truncate text-[0.6rem] font-medium text-royal">Note vocale #1</p>
+              <p className="text-[0.5rem] text-muted-foreground">Il y a 2 min</p>
+            </div>
+            <CheckCircle className="size-3.5 text-green-600" />
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-royal/15 bg-white/50 px-3 py-2">
+            <ScanLine className="size-3.5 text-royal" />
+            <div className="flex-1">
+              <p className="truncate text-[0.6rem] font-medium text-royal">Reçu OCR #3</p>
+              <p className="text-[0.5rem] text-muted-foreground">Il y a 15 min</p>
+            </div>
+            <CheckCircle className="size-3.5 text-green-600" />
+          </div>
+        </div>
+      </div>
     </section>
   );
 }

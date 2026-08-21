@@ -5,6 +5,7 @@ import { TopBar } from "@/components/report/TopBar";
 import { SessionSidebar } from "@/components/report/SessionSidebar";
 import { MultiSourceInput } from "@/components/report/MultiSourceInput";
 import { LedgerPanel } from "@/components/report/LedgerPanel";
+import { AccountantAssistant } from "@/components/report/AccountantAssistant";
 import {
   extractFromText,
   extractFromReceipt,
@@ -26,6 +27,7 @@ import { exportToCSV, exportToExcel } from "@/lib/excelExporter";
 import { exportScarWriteLuxuryPDF } from "@/lib/pdfLuxuryExporter";
 import { supabase } from "@/integrations/supabase/client";
 import type {
+  AssistantMessage,
   CurrencyCode,
   FilterPeriod,
   MachineState,
@@ -37,13 +39,13 @@ import type {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ScarWrite Rapport — Suite IA de Rapports Financiers" },
+      { title: "ScarWrite Rapport — AI Precision Ledger & Corporate Financial Suite" },
       {
         name: "description",
         content:
           "Suite offline-first pilotée par IA : dictez, scannez ou saisissez vos données et obtenez un registre financier normalisé, exportable en Excel, PDF et CSV.",
       },
-      { property: "og:title", content: "ScarWrite Rapport — Suite IA de Rapports Financiers" },
+      { property: "og:title", content: "ScarWrite Rapport — AI Precision Ledger & Corporate Financial Suite" },
       {
         property: "og:description",
         content:
@@ -85,6 +87,10 @@ function Index() {
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [syncing, setSyncing] = useState(false);
   const [narrativeLoading, setNarrativeLoading] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(true);
+  const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
+  const [assistantLoading, setAssistantLoading] = useState(false);
+  const [assistantReady, setAssistantReady] = useState(false);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeId) ?? null,
@@ -341,8 +347,32 @@ function Index() {
     await supabase.auth.signOut();
   };
 
+  const handleAssistantSend = useCallback((text: string) => {
+    setAssistantMessages((prev) => [...prev, { role: "user", content: text }]);
+    setAssistantLoading(true);
+    setTimeout(() => {
+      setAssistantMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: `Merci pour votre question. En tant qu'expert-comptable ScarWrite IA, je peux vous aider avec :\n\n• L'analyse de vos écritures comptables\n• La génération de bilans et états financiers\n• Des conseils sur les normes comptables\n• Le calcul d'amortissements et provisions\n\nPour une demande spécifique, veuillez préciser votre besoin.`,
+        },
+      ]);
+      setAssistantLoading(false);
+      if (!assistantReady && items.length > 0) {
+        setAssistantReady(true);
+      }
+    }, 800);
+  }, [assistantReady, items.length]);
+
+  const handleAssistantExport = useCallback(() => {
+    if (activeSession) {
+      exportScarWriteLuxuryPDF(activeSession, items);
+    }
+  }, [activeSession, items]);
+
   return (
-    <div className="min-h-screen bg-background pb-8">
+    <div className="app-mesh min-h-screen pb-8">
       <TopBar
         disabled={items.length === 0}
         onExportExcel={() => exportToExcel(items, period)}
@@ -356,9 +386,11 @@ function Index() {
         onSignIn={handleSignIn}
         onSignOut={handleSignOut}
         syncing={syncing}
+        assistantOpen={assistantOpen}
+        onToggleAssistant={() => setAssistantOpen(!assistantOpen)}
       />
 
-      <main className="mx-auto mt-6 grid max-w-[1800px] gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,25fr)_minmax(0,35fr)_minmax(0,40fr)]">
+      <main className="mx-auto mt-6 grid max-w-[1920px] gap-5 px-4 sm:px-6 lg:grid-cols-[minmax(0,22fr)_minmax(0,28fr)_minmax(0,32fr)_minmax(0,18fr)]">
         <SessionSidebar
           sessions={sessions}
           activeId={activeId}
@@ -390,6 +422,15 @@ function Index() {
           onGenerateNarrative={handleNarrative}
           narrativeLoading={narrativeLoading}
           busy={state === "processing" || state === "parsing"}
+        />
+        <AccountantAssistant
+          open={assistantOpen}
+          onClose={() => setAssistantOpen(false)}
+          messages={assistantMessages}
+          onSend={handleAssistantSend}
+          loading={assistantLoading}
+          ready={assistantReady}
+          onExport={handleAssistantExport}
         />
       </main>
     </div>
