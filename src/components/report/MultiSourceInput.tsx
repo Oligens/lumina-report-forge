@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
-import { Loader2, Sparkles, Mic, Square, ScanLine, Keyboard, CheckCircle } from "lucide-react";
+import { Loader2, Sparkles, Mic, Square, ScanLine, Keyboard, CheckCircle, Lock } from "lucide-react";
 import type { MachineState, SourceType } from "@/types/report";
+import { useRBAC } from "@/hooks/useRBAC";
 
 const TEMPLATES = [
   { label: "Rapport des Ventes", text: "Ventes du jour : " },
@@ -37,10 +38,47 @@ export function MultiSourceInput({
   error,
   sourceType,
 }: Props) {
+  const { canAccessStudio, canUseVoiceDictation, canUseOCR, roleDisplayName } = useRBAC();
   const busy = state === "processing" || state === "parsing";
   const [recording, setRecording] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
+
+  // Si l'utilisateur n'a pas accès au studio (LECTURE_SEULE), afficher un message bloquant
+  if (!canAccessStudio) {
+    return (
+      <section className="glass-strong flex h-full flex-col gap-4 rounded-2xl p-5 shadow-elevated">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="font-serif text-lg font-semibold text-royal">Studio Multi-Sources</h2>
+          <span className="inline-flex items-center gap-2 rounded-full border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-destructive">
+            <Lock className="size-3" />
+            Accès Restreint
+          </span>
+        </div>
+
+        <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-destructive/20 bg-destructive/5 p-8 text-center">
+          <div className="rounded-full bg-destructive/10 p-4">
+            <Lock className="size-8 text-destructive" />
+          </div>
+          <div>
+            <h3 className="mb-2 font-serif text-lg font-semibold text-destructive">
+              🔒 Mode Lecture Seule
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Saisie bloquée par l'administrateur
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Rôle actuel : <span className="font-semibold text-royal">{roleDisplayName}</span>
+            </p>
+          </div>
+          <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
+            Votre niveau d'accès ne vous permet pas d'ajouter des transactions via le Studio IA.
+            Contactez un administrateur pour obtenir les permissions nécessaires.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   const startRecording = async () => {
     try {
@@ -118,11 +156,13 @@ export function MultiSourceInput({
         <button
           type="button"
           onClick={recording ? stopRecording : startRecording}
-          disabled={busy}
-          className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] transition-all disabled:opacity-40 ${
+          disabled={busy || !canUseVoiceDictation}
+          className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
             recording
               ? "border-destructive bg-destructive/10 text-destructive"
-              : "border-royal/25 bg-white/40 text-royal hover:border-gold hover:bg-accent"
+              : canUseVoiceDictation
+                ? "border-royal/25 bg-white/40 text-royal hover:border-gold hover:bg-accent"
+                : "border-muted/25 bg-muted/10 text-muted cursor-not-allowed"
           }`}
         >
           {recording ? <Square className="size-4" /> : <Mic className="size-4" />}
@@ -131,8 +171,12 @@ export function MultiSourceInput({
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          disabled={busy}
-          className="flex items-center justify-center gap-2 rounded-xl border border-royal/25 bg-white/40 px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] text-royal transition-all hover:border-gold hover:bg-accent disabled:opacity-40"
+          disabled={busy || !canUseOCR}
+          className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2.5 text-[0.62rem] font-semibold uppercase tracking-[0.1em] transition-all disabled:cursor-not-allowed disabled:opacity-40 ${
+            canUseOCR
+              ? "border-royal/25 bg-white/40 text-royal hover:border-gold hover:bg-accent"
+              : "border-muted/25 bg-muted/10 text-muted cursor-not-allowed"
+          }`}
         >
           <ScanLine className="size-4" /> Scan Reçu / OCR
         </button>
@@ -155,7 +199,8 @@ export function MultiSourceInput({
         placeholder={`Dictez, scannez ou collez vos données brutes…
 
 Ex : ventes, achats, dépenses, factures, notes de caisse. Le moteur IA déduit les colonnes, les dates, les devises et les montants — puis les ajoute au registre en cours.`}
-        className="min-h-[180px] flex-1 resize-none rounded-xl border border-royal/20 bg-white/50 p-4 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-gold focus:bg-white/70 focus:ring-2 focus:ring-gold/20"
+        className="min-h-[180px] flex-1 resize-none rounded-xl border border-royal/20 bg-white/50 p-4 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-gold focus:bg-white/70 focus:ring-2 focus:ring-gold/20 disabled:cursor-not-allowed disabled:bg-muted/10 disabled:text-muted"
+        disabled={!canAccessStudio}
       />
 
       {/* Analyse IA en temps réel */}
@@ -197,14 +242,15 @@ Ex : ventes, achats, dépenses, factures, notes de caisse. Le moteur IA déduit 
         </div>
       )}
 
-      {/* Bouton d'injection */}
+      {/* Boutons templates */}
       <div className="flex flex-wrap gap-2">
         {TEMPLATES.map((template) => (
           <button
             key={template.label}
             type="button"
             onClick={() => onChange(value ? value : template.text)}
-            className="rounded-full border border-royal/20 bg-white/40 px-3 py-1.5 text-[0.65rem] font-medium text-royal transition-all hover:border-gold hover:bg-accent"
+            disabled={!canAccessStudio}
+            className="rounded-full border border-royal/20 bg-white/40 px-3 py-1.5 text-[0.65rem] font-medium text-royal transition-all hover:border-gold hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             {template.label}
           </button>
@@ -220,7 +266,7 @@ Ex : ventes, achats, dépenses, factures, notes de caisse. Le moteur IA déduit 
       <button
         type="button"
         onClick={onSubmitText}
-        disabled={busy || !value.trim()}
+        disabled={busy || !value.trim() || !canAccessStudio}
         className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-royal via-royal-soft to-royal px-5 py-3.5 text-left shadow-gold transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transition-all group-hover:via-white/20" />

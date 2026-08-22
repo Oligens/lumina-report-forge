@@ -137,3 +137,79 @@ export interface FinancialStatements {
   notes?: string[];
   comparatif?: { libelle: string; n: number; n1: number }[];
 }
+
+// RBAC - Gestion des Accès Multi-Utilisateurs
+export type UserRole = "SUPER_ADMIN" | "COMPTABLE_SAISIEUR" | "LECTURE_SEULE";
+
+export interface UserPermission {
+  canWriteTransactions: boolean;
+  canModifyCompanySettings: boolean;
+  canViewReports: boolean;
+  canGenerateTokens: boolean;
+  canInviteUsers: boolean;
+  canExportData: boolean;
+  canAccessStudio: boolean;
+  canUseVoiceDictation: boolean;
+  canUseOCR: boolean;
+}
+
+export const ROLE_PERMISSIONS: Record<UserRole, UserPermission> = {
+  SUPER_ADMIN: {
+    canWriteTransactions: true,
+    canModifyCompanySettings: true,
+    canViewReports: true,
+    canGenerateTokens: true,
+    canInviteUsers: true,
+    canExportData: true,
+    canAccessStudio: true,
+    canUseVoiceDictation: true,
+    canUseOCR: true,
+  },
+  COMPTABLE_SAISIEUR: {
+    canWriteTransactions: true,
+    canModifyCompanySettings: false,
+    canViewReports: true,
+    canGenerateTokens: false,
+    canInviteUsers: false,
+    canExportData: true,
+    canAccessStudio: true,
+    canUseVoiceDictation: true,
+    canUseOCR: true,
+  },
+  LECTURE_SEULE: {
+    canWriteTransactions: false,
+    canModifyCompanySettings: false,
+    canViewReports: true,
+    canGenerateTokens: false,
+    canInviteUsers: false,
+    canExportData: false,
+    canAccessStudio: false,
+    canUseVoiceDictation: false,
+    canUseOCR: false,
+  },
+};
+
+export interface InvitationToken {
+  id: string;
+  token: string; // Format: SCAR-TOKEN-XXXX-ROLE
+  companyId: string;
+  roleName: UserRole;
+  createdBy: string; // userId du SUPER_ADMIN
+  createdAt: string;
+  expiresAt?: string;
+  maxUses?: number;
+  currentUses: number;
+  isActive: boolean;
+}
+
+export interface CompanyMember {
+  id: string;
+  userId: string;
+  companyId: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  joinedAt: string;
+  avatarUrl?: string;
+  lastActiveAt?: string;
+}

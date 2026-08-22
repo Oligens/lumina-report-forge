@@ -1,4 +1,4 @@
-import { Plus, Trash2, History, FolderOpen } from "lucide-react";
+import { Plus, Trash2, History, FolderOpen, Wallet } from "lucide-react";
 import type { FilterPeriod, ReportSession } from "@/types/report";
 import { PERIOD_LABELS } from "@/lib/reportEngine";
 
@@ -11,6 +11,7 @@ interface Props {
   onDelete: (id: string) => void;
   period: FilterPeriod;
   onPeriodChange: (period: FilterPeriod) => void;
+  onOpenMobileMoney?: () => void;
 }
 
 export function SessionSidebar({
@@ -22,6 +23,7 @@ export function SessionSidebar({
   onDelete,
   period,
   onPeriodChange,
+  onOpenMobileMoney,
 }: Props) {
   const STORAGE_USED = "1.24 GB";
   const STORAGE_TOTAL = "5 GB";
@@ -68,6 +70,26 @@ export function SessionSidebar({
           <Plus className="size-5 text-gold-deep" />
         </div>
       </button>
+
+      {/* Bouton Mobile Money */}
+      {onOpenMobileMoney && (
+        <button
+          type="button"
+          onClick={onOpenMobileMoney}
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#D4AF37] via-[#F3E5AB] to-[#B8860B] px-4 py-4 text-left shadow-gold transition-all hover:brightness-110"
+        >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent transition-all group-hover:via-white/30" />
+          <div className="relative flex items-center justify-between">
+            <div>
+              <p className="font-serif text-sm font-semibold text-[#0B1E48]">Mobile Money & Transferts</p>
+              <p className="mt-0.5 text-[0.55rem] uppercase tracking-[0.1em] text-[#0B1E48]/80">
+                MonCash • Western Union • MoneyGram
+              </p>
+            </div>
+            <Wallet className="size-5 text-[#0B1E48]" />
+          </div>
+        </button>
+      )}
 
       {/* Liste des rapports */}
       <div className="flex-1 space-y-2 overflow-y-auto pr-1">

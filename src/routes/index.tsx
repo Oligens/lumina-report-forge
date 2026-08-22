@@ -6,6 +6,7 @@ import { SessionSidebar } from "@/components/report/SessionSidebar";
 import { MultiSourceInput } from "@/components/report/MultiSourceInput";
 import { LedgerPanel } from "@/components/report/LedgerPanel";
 import { AccountantAssistant } from "@/components/report/AccountantAssistant";
+import { MobileMoneyPanel } from "@/components/report/MobileMoneyPanel";
 import {
   extractFromText,
   extractFromReceipt,
@@ -91,6 +92,7 @@ function Index() {
   const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([]);
   const [assistantLoading, setAssistantLoading] = useState(false);
   const [assistantReady, setAssistantReady] = useState(false);
+  const [mobileMoneyOpen, setMobileMoneyOpen] = useState(false);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === activeId) ?? null,
@@ -400,6 +402,7 @@ function Index() {
           onDelete={handleDeleteSession}
           period={period}
           onPeriodChange={setPeriod}
+          onOpenMobileMoney={() => setMobileMoneyOpen(true)}
         />
         <MultiSourceInput
           value={prompt}
@@ -433,6 +436,25 @@ function Index() {
           onExport={handleAssistantExport}
         />
       </main>
+
+      {/* Dialog Mobile Money */}
+      {mobileMoneyOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="relative h-[90vh] w-[95vw] max-w-[1600px] overflow-hidden rounded-2xl bg-white shadow-2xl">
+            <button
+              onClick={() => setMobileMoneyOpen(false)}
+              className="absolute right-4 top-4 z-10 rounded-full bg-[#0B1E48]/10 p-2 text-[#0B1E48] hover:bg-[#0B1E48]/20"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+            <div className="h-full overflow-y-auto">
+              <MobileMoneyPanel />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
