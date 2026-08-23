@@ -4,20 +4,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/*
- * Design system definition.
- *
- * The @theme inline block maps CSS custom properties to Tailwind utility
- * classes (e.g. --color-primary -> bg-primary, text-primary).
- *
- * The :root and .dark blocks define the actual color values using oklch.
- * All colors MUST use oklch format.
- *
- * To add a new semantic color:
- * 1. Add the variable to :root (light value) and .dark (dark value)
- * 2. Register it in @theme inline as --color-<name>: var(--<name>)
- */
-
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
@@ -72,35 +58,23 @@
   --radius: 0.5rem;
   --font-serif: "Playfair Display", "Times New Roman", serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-
   --background: oklch(1 0 0);
   --foreground: oklch(0.25 0.06 259);
   --card: oklch(0.985 0.003 285);
   --card-foreground: oklch(0.25 0.06 259);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.25 0.06 259);
-
-  /* Royal blue #0F2C59 */
   --primary: oklch(0.31 0.088 262);
   --primary-foreground: oklch(0.99 0 0);
   --royal: oklch(0.31 0.088 262);
   --royal-soft: oklch(0.38 0.075 262);
-
-  /* Luxury gold #D4AF37 */
   --gold: oklch(0.771 0.128 87);
   --gold-deep: oklch(0.71 0.098 84);
   --gold-foreground: oklch(0.28 0.05 262);
-  --gold-tint: oklch(0.771 0.128 87 / 0.09);
-  --gradient-gold: linear-gradient(
-    135deg,
-    oklch(0.83 0.11 90) 0%,
-    oklch(0.771 0.128 87) 45%,
-    oklch(0.69 0.1 82) 100%
-  );
+  --gradient-gold: linear-gradient(135deg, oklch(0.83 0.11 90) 0%, oklch(0.771 0.128 87) 45%, oklch(0.69 0.1 82) 100%);
   --shadow-gold: 0 10px 30px -12px oklch(0.771 0.128 87 / 0.55);
   --shadow-elevated: 0 24px 60px -30px oklch(0.31 0.088 262 / 0.35);
   --grid-line: oklch(0.31 0.088 262 / 0.14);
-
   --secondary: oklch(0.968 0.007 260);
   --secondary-foreground: oklch(0.31 0.088 262);
   --muted: oklch(0.972 0.004 260);
@@ -126,7 +100,6 @@
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.771 0.128 87);
 }
-
 
 .dark {
   --background: oklch(0.129 0.042 264.695);
@@ -164,126 +137,32 @@
 }
 
 @layer base {
-  * {
-    border-color: var(--color-border);
-  }
-
-  body {
-    background-color: var(--color-background);
-    color: var(--color-foreground);
-    font-family: var(--font-sans);
-    font-feature-settings: "tnum" 1;
-  }
-
-  h1,
-  h2,
-  h3 {
-    font-family: var(--font-serif);
-    letter-spacing: -0.01em;
-  }
+  * { border-color: var(--color-border); }
+  body { background-color: var(--color-background); color: var(--color-foreground); font-family: var(--font-sans); font-feature-settings: "tnum" 1; }
+  h1, h2, h3 { font-family: var(--font-serif); letter-spacing: -0.01em; }
 }
 
-@utility text-gradient-gold {
-  background-image: var(--gradient-gold);
-  background-clip: text;
-  color: transparent;
+@utility text-gradient-gold { background-image: var(--gradient-gold); background-clip: text; color: transparent; }
+@utility bg-gradient-gold { background-image: var(--gradient-gold); }
+@utility shadow-gold { box-shadow: var(--shadow-gold); }
+@utility shadow-elevated { box-shadow: var(--shadow-elevated); }
+@utility numeric { font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+@utility app-mesh { background-color: #ffffff; background-image: radial-gradient(60rem 40rem at 12% -10%, rgba(212,175,55,.18), transparent 60%), radial-gradient(50rem 36rem at 92% 4%, rgba(15,44,89,.16), transparent 62%), radial-gradient(46rem 34rem at 78% 96%, rgba(212,175,55,.14), transparent 60%), radial-gradient(52rem 40rem at 4% 88%, rgba(30,64,175,.12), transparent 62%), linear-gradient(180deg,#fff 0%,#f7f9ff 45%,#f0f4ff 100%); background-attachment: fixed; }
+@utility glass { background: rgba(255,255,255,.65); backdrop-filter: blur(16px) saturate(180%); border: 1px solid rgba(212,175,55,.25); box-shadow: 0 8px 32px 0 rgba(15,44,89,.08), inset 0 1px 0 rgba(255,255,255,.8); }
+@utility glass-strong { background: rgba(248,250,252,.78); backdrop-filter: blur(20px) saturate(180%); border: 1px solid rgba(212,175,55,.3); box-shadow: 0 12px 44px 0 rgba(15,44,89,.12), inset 0 1px 0 rgba(255,255,255,.85); }
+@utility glass-royal { background: linear-gradient(135deg,rgba(15,44,89,.92) 0%,rgba(30,64,175,.86) 100%); backdrop-filter: blur(14px) saturate(160%); border: 1px solid rgba(212,175,55,.4); box-shadow: 0 12px 40px -14px rgba(15,44,89,.55); color: #fff; }
+@utility glow-gold { &:hover { border-color: rgba(212,175,55,.75); box-shadow: 0 0 0 1px rgba(212,175,55,.35), 0 10px 34px -10px rgba(212,175,55,.65); } }
+@utility btn-royal-gold { background: linear-gradient(135deg,#0f2c59 0%,#1e40af 55%,#0f2c59 100%); color:#f5d97a; border:1px solid rgba(212,175,55,.55); box-shadow:0 10px 28px -12px rgba(15,44,89,.7); transition:all .25s ease; &:hover { box-shadow:0 0 0 1px rgba(212,175,55,.5),0 14px 34px -12px rgba(212,175,55,.6); color:#ffe6a3; } }
+
+@utility custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: oklch(0.71 0.098 84) oklch(0.96 0.007 260);
+  &::-webkit-scrollbar { width: 8px; height: 8px; }
+  &::-webkit-scrollbar-track { background: oklch(0.96 0.007 260); border-radius: 9999px; }
+  &::-webkit-scrollbar-thumb { background: oklch(0.71 0.098 84); border-radius: 9999px; border: 2px solid oklch(0.96 0.007 260); }
+  &::-webkit-scrollbar-thumb:hover { background: oklch(0.64 0.11 84); }
 }
 
-@utility bg-gradient-gold {
-  background-image: var(--gradient-gold);
-}
-
-@utility shadow-gold {
-  box-shadow: var(--shadow-gold);
-}
-
-@utility shadow-elevated {
-  box-shadow: var(--shadow-elevated);
-}
-
-@utility numeric {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-/* ---------- Futuristic luxury glassmorphism ---------- */
-
-@utility app-mesh {
-  background-color: #ffffff;
-  background-image:
-    radial-gradient(60rem 40rem at 12% -10%, rgba(212, 175, 55, 0.18), transparent 60%),
-    radial-gradient(50rem 36rem at 92% 4%, rgba(15, 44, 89, 0.16), transparent 62%),
-    radial-gradient(46rem 34rem at 78% 96%, rgba(212, 175, 55, 0.14), transparent 60%),
-    radial-gradient(52rem 40rem at 4% 88%, rgba(30, 64, 175, 0.12), transparent 62%),
-    linear-gradient(180deg, #ffffff 0%, #f7f9ff 45%, #f0f4ff 100%);
-  background-attachment: fixed;
-}
-
-@utility glass {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(16px) saturate(180%);
-  border: 1px solid rgba(212, 175, 55, 0.25);
-  box-shadow:
-    0 8px 32px 0 rgba(15, 44, 89, 0.08),
-    inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-@utility glass-strong {
-  background: rgba(248, 250, 252, 0.78);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(212, 175, 55, 0.3);
-  box-shadow:
-    0 12px 44px 0 rgba(15, 44, 89, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.85);
-}
-
-@utility glass-royal {
-  background: linear-gradient(
-    135deg,
-    rgba(15, 44, 89, 0.92) 0%,
-    rgba(30, 64, 175, 0.86) 100%
-  );
-  backdrop-filter: blur(14px) saturate(160%);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  box-shadow: 0 12px 40px -14px rgba(15, 44, 89, 0.55);
-  color: #ffffff;
-}
-
-@utility glow-gold {
-  &:hover {
-    border-color: rgba(212, 175, 55, 0.75);
-    box-shadow:
-      0 0 0 1px rgba(212, 175, 55, 0.35),
-      0 10px 34px -10px rgba(212, 175, 55, 0.65);
-  }
-}
-
-@utility btn-royal-gold {
-  background: linear-gradient(135deg, #0f2c59 0%, #1e40af 55%, #0f2c59 100%);
-  color: #f5d97a;
-  border: 1px solid rgba(212, 175, 55, 0.55);
-  box-shadow: 0 10px 28px -12px rgba(15, 44, 89, 0.7);
-  transition: all 0.25s ease;
-  &:hover {
-    box-shadow:
-      0 0 0 1px rgba(212, 175, 55, 0.5),
-      0 14px 34px -12px rgba(212, 175, 55, 0.6);
-    color: #ffe6a3;
-  }
-}
-
-@keyframes led-pulse {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55);
-  }
-  50% {
-    opacity: 0.65;
-    box-shadow: 0 0 0 5px rgba(34, 197, 94, 0);
-  }
-}
-
-@utility led-live {
-  animation: led-pulse 1.8s ease-in-out infinite;
-}
+@keyframes led-pulse { 0%,100% { opacity:1; box-shadow:0 0 0 0 rgba(34,197,94,.55); } 50% { opacity:.65; box-shadow:0 0 0 5px rgba(34,197,94,0); } }
+@utility led-live { animation: led-pulse 1.8s ease-in-out infinite; }
