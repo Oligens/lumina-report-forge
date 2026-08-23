@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import type { CurrencyCode, BusinessModel, AccountingStandard } from "@/types/report";
-import { buildWorldEconomyPrompt } from "@/lib/worldEconomyAgent";
+import { buildWorldEconomyPrompt, routeWorldEconomyExperts } from "@/lib/worldEconomyAgent";
+import { buildResearchTrace, formatEvidenceForModel } from "@/lib/worldEconomy/researchEngine";
 
 const GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
@@ -81,9 +82,25 @@ export const accountantChat = createServerFn({ method: "POST" }).inputValidator(
 
 export const worldEconomyChat = createServerFn({ method: "POST" }).inputValidator((data: unknown) => z.object({ messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string() })).max(40), context: z.string().max(50000).default("") }).parse(data)).handler(async ({ data }) => {
   const latest = data.messages[data.messages.length - 1]?.content ?? "";
-  const system = buildWorldEconomyPrompt(latest);
-  const content = await callGateway({ model: "google/gemini-3.5-flash", messages: [{ role: "system", content: system }, { role: "system", content: `Contexte du dossier :\n${data.context}` }, ...data.messages] });
-  return { reply: content };
+  const routing = routeWorldEconomyExperts(latest, data.context);
+  const trace = await buildResearchTrace(latest, routing.regulatoryResolution);
+  const evidencePack = formatEvidenceForModel(trace);
+  const expertFindings = await Promise.all(routing.experts.slice(0, 6).map(async (expert) => {
+    const prompt = `${expert.systemPrompt}\n\nMISSION DE VÉRIFICATION: Tu es un expert vérificateur indépendant. Travaille uniquement sur ton domaine. Examine les preuves fournies. Tu dois REFUSER toute conclusion réglementaire si la preuve est insuffisante. Tu dois séparer FACT, SOURCE, CALCUL, ANALYSE et HYPOTHÈSE. Signale explicitement les informations que tu veux qu'un autre expert contrôle.\n\nQUESTION:\n${latest}\n\n${evidencePack}\n\nRéponds en JSON strict avec: expertId, conclusion, facts[], sources[], calculations[], hypotheses[], blockers[], challenges[] et confidence (high|medium|low|unverified).`;
+    try {
+      const result = await callGateway({ model: "google/gemini-3.5-flash", response_format: { type: "json_object" }, messages: [{ role: "system", content: prompt }] });
+      return JSON.parse(cleanJson(result)) as Record<string, unknown>;
+    } catch (error) {
+      return { expertId: expert.id, conclusion: "Expertise non disponible: aucune conclusion ne peut être validée.", facts: [], sources: [], calculations: [], hypotheses: [], blockers: [error instanceof Error ? error.message : "Erreur expert"], challenges: [], confidence: "unverified" };
+    }
+  }));
+
+  const reviewPrompt = `Tu es l'ARBITRE / CONTRE-EXPERT de l'Agent Économie Mondiale. Confronte les rapports indépendants ci-dessous. Ne vote pas à la majorité: exige des preuves. Identifie les contradictions, les calculs incompatibles, les référentiels mal appliqués et les affirmations sans source. Si une conclusion importante n'est pas démontrée, marque-la NON VÉRIFIÉE et demande une vérification humaine.\n\nQUESTION:\n${latest}\n\nPREUVES:\n${evidencePack}\n\nRAPPORTS DES EXPERTS:\n${JSON.stringify(expertFindings)}\n\nRetourne JSON strict: {"validatedClaims":[],"rejectedClaims":[],"conflicts":[],"requiredChecks":[],"confidence":"high|medium|low|unverified"}.`;
+  const review = JSON.parse(cleanJson(await callGateway({ model: "google/gemini-3.5-flash", response_format: { type: "json_object" }, messages: [{ role: "system", content: reviewPrompt }] })));
+
+  const finalPrompt = `${buildWorldEconomyPrompt(latest)}\n\nTU ES LE SYNTHÉTISEUR FINAL. Tu ne peux utiliser que les éléments validés par l'arbitre ou explicitement présentés comme hypothèses. Ne transforme jamais une hypothèse en fait. Chaque affirmation réglementaire doit pouvoir être reliée à une source. Si la preuve manque, écris clairement « NON VÉRIFIÉ ».\n\nTRACE DE RECHERCHE:\n${evidencePack}\n\nEXPERTS:\n${JSON.stringify(expertFindings)}\n\nARBITRAGE:\n${JSON.stringify(review)}\n\nStructure obligatoire:\n1. Résumé exécutif\n2. Faits vérifiés\n3. Juridiction et référentiel\n4. Analyse par domaine\n5. Calculs\n6. Désaccords et contre-vérifications\n7. Incertitudes / données manquantes\n8. Conclusion validée ou NON VÉRIFIÉE\n9. Recommandations\n10. Sources et date de vérification\n11. Niveau de confiance global.\n\nCatégories à afficher: SOURCE OFFICIELLE, SOURCE SECONDAIRE, ANALYSE DE L'AGENT, HYPOTHÈSE.`;
+  const reply = await callGateway({ model: "google/gemini-3.5-flash", messages: [{ role: "system", content: finalPrompt }, { role: "user", content: latest }] });
+  return { reply, trace: { ...trace, findings: expertFindings.map((finding) => ({ expertId: String(finding.expertId ?? "unknown"), conclusion: String(finding.conclusion ?? ""), evidence: [], confidence: (finding.confidence as "high" | "medium" | "low" | "unverified") ?? "unverified", blockers: Array.isArray(finding.blockers) ? finding.blockers.map(String) : [], disagreements: Array.isArray(finding.challenges) ? finding.challenges.map(String) : [] })), finalConfidence: (review.confidence as "high" | "medium" | "low" | "unverified") ?? trace.finalConfidence }, routing: { experts: routing.experts.map((expert) => expert.id), reasons: routing.reasons } };
 });
 
 export const buildFinancialStatements = createServerFn({ method: "POST" }).inputValidator((data: unknown) => z.object({ context: z.string().min(1).max(60000), transcript: z.string().max(30000).default("") }).parse(data)).handler(async ({ data }) => {
