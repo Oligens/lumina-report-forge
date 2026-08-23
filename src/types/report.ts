@@ -59,18 +59,15 @@ export type MachineState = "idle" | "processing" | "parsing" | "ready" | "error"
 export type AccountingStandard =
   | "SYSCOHADA"
   | "IFRS"
-  | "US GAAP"
-  | "PCG"
-  | "Norme Nationale Locale";
+  | "US_GAAP"
+  | "DGI_LOCAL";
 
 export type BusinessModel =
-  | "SaaS / Abonnement"
-  | "Commerce de détail / Restaurant"
-  | "Industrie / Manufacturing"
-  | "Prestataire de Services"
-  | "Société de Conseil"
-  | "Organisme à but non lucratif"
-  | "Comptabilité Publique";
+  | "COMMERCIAL"
+  | "INDUSTRY"
+  | "SAAS"
+  | "PUBLIC"
+  | "MOBILE_MONEY";
 
 export type LegalForm =
   | "Société Anonyme (SA)"
