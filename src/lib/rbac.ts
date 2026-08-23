@@ -103,12 +103,11 @@ export function setCurrentUserRole(role: UserRole, companyId: string): void {
 }
 
 /**
- * Mode local/studio : SUPER_ADMIN par défaut lorsqu'aucun rôle n'est établi.
- * Un rôle explicitement enregistré reste prioritaire, y compris LECTURE_SEULE.
+ * Studio local : SUPER_ADMIN est le rôle effectif par défaut et force l'accès complet.
+ * Cela neutralise les anciens rôles LECTURE_SEULE stockés localement qui pouvaient
+ * maintenir l'interface en mode lecture seule après une mise à jour de l'application.
  */
 export function getCurrentUserRole(): UserRole {
-  const role = localStorage.getItem(CURRENT_USER_KEY);
-  if (role) return role as UserRole;
   localStorage.setItem(CURRENT_USER_KEY, 'SUPER_ADMIN');
   if (!localStorage.getItem(CURRENT_COMPANY_KEY)) localStorage.setItem(CURRENT_COMPANY_KEY, DEFAULT_COMPANY_ID);
   return 'SUPER_ADMIN';
