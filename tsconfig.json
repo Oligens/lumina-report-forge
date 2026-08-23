@@ -10,6 +10,7 @@
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": false,
     "noEmit": true,
+    "noEmitOnError": false,
     "skipLibCheck": true,
     "strict": false,
     "noUnusedLocals": false,
