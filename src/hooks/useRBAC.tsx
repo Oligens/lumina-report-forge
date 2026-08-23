@@ -67,6 +67,7 @@ export function useRBAC() {
     isSaisisseur: role === 'COMPTABLE_SAISIEUR',
     isLectureSeule: role === 'LECTURE_SEULE',
     roleDisplayName: role ? formatRoleForDisplay(role) : '',
+    userRole: role,
   };
 }
 

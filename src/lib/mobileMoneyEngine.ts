@@ -5,7 +5,7 @@
  * Normes: IFRS, SYSCOHADA, Gestion de Trésorerie Multi-Devises
  */
 
-import type { CurrencyCode, BusinessModel } from './types';
+import type { CurrencyCode, BusinessModel } from '../types/report';
 
 // ============================================================================
 // TYPES DE DONNÉES
@@ -570,14 +570,3 @@ export function validateCalculations(): boolean {
   return depositValid && withdrawalValid;
 }
 
-// Export des types
-export type {
-  MobileMoneyService,
-  TransactionType,
-  CommissionGrid,
-  MobileMoneyWallet,
-  CashBox,
-  MobileMoneyTransaction,
-  DailyReconciliation,
-  MobileMoneyDashboard
-};

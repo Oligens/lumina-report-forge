@@ -60,14 +60,24 @@ export type AccountingStandard =
   | "SYSCOHADA"
   | "IFRS"
   | "US_GAAP"
-  | "DGI_LOCAL";
+  | "DGI_LOCAL"
+  | "US GAAP"
+  | "PCG"
+  | "Norme Nationale Locale";
 
 export type BusinessModel =
   | "COMMERCIAL"
   | "INDUSTRY"
   | "SAAS"
   | "PUBLIC"
-  | "MOBILE_MONEY";
+  | "MOBILE_MONEY"
+  | "Commerce de détail / Restaurant"
+  | "SaaS / Abonnement"
+  | "Industrie / Manufacturing"
+  | "Comptabilité Publique"
+  | "Prestataire de Services"
+  | "Société de Conseil"
+  | "Organisme à but non lucratif";
 
 export type LegalForm =
   | "Société Anonyme (SA)"
@@ -209,4 +219,20 @@ export interface CompanyMember {
   joinedAt: string;
   avatarUrl?: string;
   lastActiveAt?: string;
+}
+
+// Journal Comptable - Écritures comptables
+export interface JournalEntry {
+  id: string;
+  date: string;
+  libelle: string;
+  compteDebit: string;
+  compteCredit: string;
+  montant: number;
+  currency: CurrencyCode;
+  normeComptable: AccountingStandard;
+  modeleEntreprise: BusinessModel;
+  statut: 'EN_ATTENTE' | 'VALIDE' | 'BLOQUE';
+  createdBy: string;
+  createdAt: string;
 }

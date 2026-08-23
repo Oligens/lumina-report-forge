@@ -4,7 +4,7 @@
  */
 
 import type { BusinessModel, AccountingStandard, JournalEntry } from '../types/report';
-import { generateAccountingEntries } from './accountingEngine';
+import { parseAccountingResponse, buildAccountingPrompt } from './accountingEngine';
 
 // ============================================================================
 // TYPES & INTERFACES
