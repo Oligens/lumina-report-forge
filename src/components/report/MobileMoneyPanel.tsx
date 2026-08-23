@@ -82,7 +82,7 @@ export function MobileMoneyPanel() {
     frais_client: string;
     commission_operateur: string;
     currency: string;
-    note: string;
+    note?: string;
   }>({
     date: new Date().toISOString().split("T")[0],
     service: "MonCash",
@@ -91,7 +91,7 @@ export function MobileMoneyPanel() {
     frais_client: "",
     commission_operateur: "",
     currency: settings.base_currency,
-    note: "",
+    note: undefined,
   });
 
   // Formulaire ajustement
