@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { UserRole, UserPermission, InvitationToken, CompanyMember } from '@/types/report';
+import { ROLE_PERMISSIONS } from '@/types/report';
 import {
   getCurrentUserRole,
   getCurrentCompanyId,
@@ -11,27 +12,21 @@ import {
 } from '@/lib/rbac';
 
 /**
- * Hook personnalisé pour gérer l'état RBAC de l'utilisateur courant
+ * Hook personnalisé pour gérer l'état RBAC de l'utilisateur courant.
+ * Le Studio démarre en SUPER_ADMIN pour éviter un état transitoire Lecture Seule.
  */
 export function useRBAC() {
-  const [role, setRole] = useState<UserRole | null>(null);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [permissions, setPermissions] = useState<UserPermission | null>(null);
+  const [role, setRole] = useState<UserRole | null>('SUPER_ADMIN');
+  const [companyId, setCompanyId] = useState<string | null>('default-company');
+  const [permissions, setPermissions] = useState<UserPermission | null>(ROLE_PERMISSIONS.SUPER_ADMIN);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Charger le rôle et l'entreprise au montage
     const userRole = getCurrentUserRole();
     const currentCompanyId = getCurrentCompanyId();
-    
     setRole(userRole);
     setCompanyId(currentCompanyId);
-    
-    if (userRole) {
-      const perms = getCurrentUserPermissions();
-      setPermissions(perms);
-    }
-    
+    setPermissions(getCurrentUserPermissions());
     setIsLoading(false);
   }, []);
 
